@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tra cứu & Tạo QR VietQR</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h2 { text-align: center; }
+    .search-box { text-align: center; margin-bottom: 20px; }
+    input { padding: 8px; width: 60%; font-size: 16px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    tr:hover { background-color: #f1f1f1; cursor: pointer; }
+    #qrcode { margin-top: 20px; text-align: center; }
+    .pagination { text-align: center; margin-top: 10px; }
+    button { margin: 0 5px; padding: 5px 10px; }
+  </style>
+</head>
+<body>
+  <h2>Tra cứu & Tạo QR VietQR</h2>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Nhập tên tài khoản hoặc nội dung...">
+  </div>
+
+  <table id="resultTable">
+    <thead>
+      <tr>
+        <th>Số TK</th>
+        <th>Ngân hàng</th>
+        <th>Tên tài khoản</th>
+        <th>Số tiền</th>
+        <th>Nội dung</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="pagination">
+    <button onclick="prevPage()">Trang trước</button>
+    <span id="pageInfo"></span>
+    <button onclick="nextPage()">Trang sau</button>
+  </div>
+
+  <div id="qrcode"></div>
+
+<script>
+let data = [];
+let filteredData = [];
+let currentPage = 1;
+const rowsPerPage = 10;
+
+// Tải JSON ngoài
+fetch('data.json')
+  .then(response => response.json())
+  .then(json => {
+    data = json;
+    filteredData = data;
+    renderTable();
+  });
+
+function renderTable() {
+  const tableBody = document.querySelector("#resultTable tbody");
+  tableBody.innerHTML = "";
+
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const pageData = filteredData.slice(start, end);
+
+  for (const row of pageData) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.AccountNumber}</td>
+      <td>${row.BankBin}</td>
+      <td>${row.AccountName}</td>
+      <td>${row.Amount || ''}</td>
+      <td>${row.Remark || ''}</td>
+    `;
+    tr.onclick = () => generateQR(row);
+    tableBody.appendChild(tr);
+  }
+
+  document.getElementById("pageInfo").textContent = `Trang ${currentPage}/${Math.ceil(filteredData.length / rowsPerPage)}`;
+}
+
+function searchTable() {
+  const keyword = document.getElementById("searchInput").value.toLowerCase();
+  filteredData = data.filter(row =>
+    (row.AccountName && row.AccountName.toLowerCase().includes(keyword)) ||
+    (row.Remark && row.Remark.toLowerCase().includes(keyword))
+  );
+  currentPage = 1;
+  renderTable();
+}
+
+document.getElementById("searchInput").addEventListener("input", searchTable);
+
+function prevPage() {
+  if (currentPage > 1) {
+    currentPage--;
+    renderTable();
+  }
+}
+
+function nextPage() {
+  if (currentPage < Math.ceil(filteredData.length / rowsPerPage)) {
+    currentPage++;
+    renderTable();
+  }
+}
+
+function generateQR(row) {
+  const qrDiv = document.getElementById("qrcode");
+  qrDiv.innerHTML = "";
+  const url = `https://img.vietqr.io/image/${row.BankBin}-${row.AccountNumber}-compact2.png?amount=${row.Amount || ''}&addInfo=${encodeURIComponent(row.Remark || '')}&accountName=${encodeURIComponent(row.AccountName || '')}`;
+  const img = document.createElement("img");
+  img.src = url;
+  img.alt = "QR Code";
+  img.style.maxWidth = "300px";
+  qrDiv.appendChild(img);
+}
+</script>
+
+</body>
+</html>
