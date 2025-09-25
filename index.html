@@ -5,10 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>BIDV QR nop thue</title>
 <style>
-  :root{}
   body{font-family:Arial,Helvetica,sans-serif;margin:0;background:#f5f6fa;color:#222}
-  header{background:teal;color:white;padding:10px 16px;display:flex;align-items:center;gap:12px}
-  header img{height:46px}
+  header{background:teal;color:#FFD700;padding:10px 16px;display:flex;align-items:center;gap:12px}
   header .title{font-size:18px;font-weight:700}
   .marquee{background:#FFC62F;color:#000;padding:6px 10px;overflow:hidden;white-space:nowrap}
   .marquee span{display:inline-block;padding-left:100%;animation:marq 20s linear infinite}
@@ -21,6 +19,7 @@
   table{width:100%;border-collapse:collapse;background:white;border-radius:6px;overflow:hidden}
   th,td{padding:8px;text-align:left;border-bottom:1px solid #eee;font-size:13px}
   th{background:#f0f7fb;color:teal;font-weight:600}
+  td.amount{text-align:right;font-weight:600}
   tr:hover{background:#fafafa;cursor:pointer}
   .pager{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px}
   #qrcode{margin-top:18px;text-align:center;background:white;padding:12px;border-radius:8px}
@@ -30,7 +29,6 @@
 </head>
 <body>
 <header>
-  <img src="https://upload.wikimedia.org/wikipedia/commons/6/6a/Logo_BIDV.png" alt="BIDV">
   <div>
     <div class="title">BIDV - PGD Đường 9 - Tra cứu &amp; Tạo QR Thanh toán (Thuế)</div>
     <div class="meta">Tìm kiếm theo tên NNT, đối chiếu thông tin, chọn để sinh QR định danh</div>
@@ -55,7 +53,7 @@
 
   <table id="resultTable" aria-live="polite">
     <thead>
-      <tr><th style="width:160px">Số TK</th><th style="width:120px">BankBin</th><th>Tên tài khoản</th><th style="width:120px">Số tiền</th><th style="width:160px">MST / Nội dung</th></tr>
+      <tr><th style="width:160px">Số TK</th><th>Tên tài khoản</th><th style="width:120px">Số tiền</th><th style="width:160px">MST / Nội dung</th></tr>
     </thead>
     <tbody></tbody>
   </table>
@@ -70,17 +68,13 @@
 </div>
 
 <script>
-// === Nhúng dữ liệu (toàn bộ) ===
 fetch("data.json")
   .then(res => res.json())
   .then(data => {
-
-// Globals
 let filtered = data.slice();
 let page = 1;
 const perPage = 10;
 
-// Elements
 const tbody = document.querySelector('#resultTable tbody');
 const searchInput = document.getElementById('searchInput');
 const phuongSelect = document.getElementById('phuongSelect');
@@ -92,7 +86,6 @@ const stats = document.getElementById('stats');
 const clearBtn = document.getElementById('clearBtn');
 const qrcodeDiv = document.getElementById('qrcode');
 
-// Init
 function init(){
   populatePhuongOptions();
   updateStats();
@@ -100,7 +93,6 @@ function init(){
   attachEvents();
 }
 
-// Populate unique Phuong values
 function populatePhuongOptions(){
   const set = new Set();
   data.forEach(r=>{ if(r['PHƯỜNG/XÃ']) set.add(r['PHƯỜNG/XÃ']); });
@@ -110,9 +102,8 @@ function populatePhuongOptions(){
   populateThonOptions('');
 }
 
-// Populate Thon options, optionally restricted by phuong
 function populateThonOptions(phuong){
-  thonSelect.innerHTML = '<option value="">-- Chọn Thôn/Tổ (cột H) --</option>';
+  thonSelect.innerHTML = '<option value="">-- Chọn Thôn/Tổ --</option>';
   const set = new Set();
   data.forEach(r=>{
     if(r['THÔN/TỔ/KHU PHỐ']){
@@ -124,7 +115,6 @@ function populateThonOptions(phuong){
   thonSelect.addEventListener('change', ()=>searchAndRender());
 }
 
-// Search & filter
 function searchAndRender(){
   const kw = searchInput.value.trim().toLowerCase();
   const ph = phuongSelect.value;
@@ -142,7 +132,6 @@ function searchAndRender(){
   render();
 }
 
-// Render table page
 function render(){
   tbody.innerHTML='';
   const total = filtered.length;
@@ -154,28 +143,25 @@ function render(){
   pageData.forEach(r=>{
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${escapeHtml(r['AccountNumber']||'')}</td>
-                    <td>${escapeHtml(r['BankBin']||'')}</td>
                     <td>${escapeHtml(r['AccountName']||'')}</td>
-                    <td>${escapeHtml(r['Amount']||'')}</td>
+                    <td class="amount">${formatAmount(r['Amount']||'')}</td>
                     <td>${escapeHtml(r['MST']||'')}</td>`;
     tr.addEventListener('click', ()=>showQR(r));
     tbody.appendChild(tr);
   });
 }
 
-// Show QR below table using VietQR API
 function showQR(row){
   qrcodeDiv.innerHTML='';
   const url = `https://img.vietqr.io/image/${encodeURIComponent(row['BankBin']||'')}-${encodeURIComponent(row['AccountNumber']||'')}-compact2.png?amount=${encodeURIComponent(row['Amount']||'')}&addInfo=${encodeURIComponent(row['Remark']||'')}&accountName=${encodeURIComponent(row['AccountName']||'')}`;
   const img = document.createElement('img');
   img.src = url;
   img.alt = 'QR Code';
-  img.style.maxWidth='320px';
   img.style.width='100%';
   img.style.maxWidth='360px';
   const info = document.createElement('div');
   info.style.marginTop='8px';
-  info.innerHTML = `<strong>${escapeHtml(row['AccountName']||'')}</strong><br>Số TK: ${escapeHtml(row['AccountNumber']||'')} &nbsp; | &nbsp; Số tiền: ${escapeHtml(row['Amount']||'')} VND<br><em>${escapeHtml(row['Remark']||'')}</em>`;
+  info.innerHTML = `<strong>${escapeHtml(row['AccountName']||'')}</strong><br>Số TK: ${escapeHtml(row['AccountNumber']||'')} &nbsp; | &nbsp; Số tiền: ${formatAmount(row['Amount']||'')} VND<br><em>${escapeHtml(row['Remark']||'')}</em>`;
   qrcodeDiv.appendChild(img);
   qrcodeDiv.appendChild(info);
   const a = document.createElement('a');
@@ -184,28 +170,27 @@ function showQR(row){
   a.textContent = '⬇ Tải ảnh QR';
   a.style.display='inline-block';
   a.style.marginTop='8px';
-  a.style.background='#004B8D'; a.style.color='white'; a.style.padding='6px 10px'; a.style.borderRadius='6px'; a.style.textDecoration='none';
+  a.style.background='teal'; a.style.color='white'; a.style.padding='6px 10px'; a.style.borderRadius='6px'; a.style.textDecoration='none';
   qrcodeDiv.appendChild(document.createElement('br'));
   qrcodeDiv.appendChild(a);
 }
 
-// update stats
 function updateStats(){ stats.textContent = `Tổng bản ghi: ${data.length}`; }
 
-// pagination handlers
 prevBtn.addEventListener('click', ()=>{ if(page>1){page--; render();}});
 nextBtn.addEventListener('click', ()=>{ const tot=Math.ceil(filtered.length/perPage); if(page<tot){page++; render();}});
 
-// events
 function attachEvents(){
   searchInput.addEventListener('input', ()=>{ searchAndRender(); });
   clearBtn.addEventListener('click', ()=>{ searchInput.value=''; phuongSelect.value=''; populateThonOptions(''); thonSelect.value=''; searchAndRender(); });
 }
 
-// escapeHtml helper
 function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+function formatAmount(x){ 
+  const n = parseInt(x||0,10); 
+  return isNaN(n)?'': n.toLocaleString('vi-VN'); 
+}
 
-// Initialize after small delay (data is embedded)
 setTimeout(init,100);
   });
 </script>
